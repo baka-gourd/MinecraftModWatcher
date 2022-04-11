@@ -20,7 +20,6 @@ jobs:
     - name: Build
       run: |
         dotnet publish .\MinecraftModWatcher\MinecraftModWatcher.csproj -o ./ -r linux-x64 -c Release
-        dotnet publish .\MinecraftModWatcher\MinecraftModWatcher.csproj -o ./ -r win-x64 -c Release
         
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v2
