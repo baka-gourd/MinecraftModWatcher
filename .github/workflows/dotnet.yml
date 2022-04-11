@@ -16,7 +16,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v2
       with:
-        dotnet-version: 7.0.x
+        dotnet-version: 7.0.0-preview.2
     - name: Build
       run: |
         dotnet publish .\MinecraftModWatcher\MinecraftModWatcher.csproj -o ./ -r linux-x64 -c Release
