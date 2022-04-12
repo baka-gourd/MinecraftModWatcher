@@ -34,44 +34,18 @@ public partial class FileR
     [J("fileName")] public string FileName { get; set; }
     [J("releaseType")] public long ReleaseType { get; set; }
     [J("fileStatus")] public long FileStatus { get; set; }
-    [J("hashes")] public Hash[] Hashes { get; set; }
-    [J("fileDate")] public DateTimeOffset FileDate { get; set; }
+    [J("hashes")] public object[] Hashes { get; set; }
+    [J("fileDate")] public object FileDate { get; set; }
     [J("fileLength")] public long FileLength { get; set; }
     [J("downloadCount")] public long DownloadCount { get; set; }
     [J("downloadUrl")] public Uri DownloadUrl { get; set; }
     [J("gameVersions")] public string[] GameVersions { get; set; }
-    [J("sortableGameVersions")] public SortableGameVersion[] SortableGameVersions { get; set; }
-    [J("dependencies")] public Dependency[] Dependencies { get; set; }
+    [J("sortableGameVersions")] public object[] SortableGameVersions { get; set; }
+    [J("dependencies")] public object[] Dependencies { get; set; }
     [J("alternateFileId")] public long AlternateFileId { get; set; }
     [J("isServerPack")] public bool IsServerPack { get; set; }
     [J("fileFingerprint")] public long FileFingerprint { get; set; }
-    [J("modules")] public Module[] Modules { get; set; }
-}
-
-public partial class Dependency
-{
-    [J("modId")] public long ModId { get; set; }
-    [J("relationType")] public long RelationType { get; set; }
-}
-public partial class Hash
-{
-    [J("value")] public string Value { get; set; }
-    [J("algo")] public long Algo { get; set; }
-}
-
-public partial class Module
-{
-    [J("name")] public string Name { get; set; }
-    [J("fingerprint")] public long Fingerprint { get; set; }
-}
-
-public partial class SortableGameVersion
-{
-    [J("gameVersionName")] public string GameVersionName { get; set; }
-    [J("gameVersionPadded")] public string GameVersionPadded { get; set; }
-    [J("gameVersion")] public string GameVersion { get; set; }
-    [J("gameVersionReleaseDate")] public DateTimeOffset GameVersionReleaseDate { get; set; }
-    [J("gameVersionTypeId")] public long GameVersionTypeId { get; set; }
+    [J("modules")] public object[] Modules { get; set; }
 }
 
 [JsonSerializable(typeof(Response))]
