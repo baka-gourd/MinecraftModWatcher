@@ -8,8 +8,11 @@ using CurseforgeManifestsGenerator;
 
 using MinecraftModWatcher;
 
+using Polly;
+
 using Serilog;
 using Serilog.Core;
+using Serilog.Events;
 
 class Program
 {
@@ -25,14 +28,20 @@ class Program
         var conf = new Conf();
         LoadConf(ref conf);
 
+        Log.Logger.Information("Config loaded.");
+
         //init dictionary
         var infos = new Dictionary<long, List<Info>>();
 
+        Log.Logger.Information("Generating files md5...");
         //get all files md5
         var filesMd5 = Directory.GetFiles(conf.WatchFolder!).ToList().Select(f => string.Concat(MD5.HashData(File.ReadAllBytes(f)).Select(m => m.ToString("X2")))).ToList();
 
+        Log.Logger.Information("Generated.");
+
         if (!File.Exists("./ModWatcher/info.json"))
         {
+            Log.Logger.Warning("Cannot find info, generating...");
             await File.WriteAllTextAsync("./ModWatcher/info.json", JsonSerializer.Serialize(infos, InfoContext.Default.DictionaryInt64ListInfo));
             foreach (var file in Directory.GetFiles(conf.WatchFolder!))
             {
@@ -44,6 +53,7 @@ class Program
         {
             infos = JsonSerializer.Deserialize(await File.ReadAllTextAsync("./ModWatcher/info.json"), InfoContext.Default.DictionaryInt64ListInfo)!;
 
+            Log.Logger.Information("info loaded.");
             //download mods
             var httpCli = new HttpClient();
             httpCli.DefaultRequestHeaders.Add("x-api-key", conf.ApiKey!);
@@ -57,6 +67,7 @@ class Program
                         //delete mod
                         if (i.Deleted)
                         {
+                            Log.Logger.Information("Deleting {0}", i.FileName);
                             File.Delete(Path.Combine(conf.WatchFolder!, i.FileName!));
                         }
                         continue;
@@ -73,12 +84,16 @@ class Program
                     }
                     else
                     {
-                        var downloadUrl = JsonNode.Parse(
-                            httpCli.GetStringAsync($"https://api.curseforge.com/v1/mods/{projectId}/files/{i.FileId}/download-url").Result)![
-                            "data"];
-                        Log.Logger.Information("Download {0}...", i.FileName!);
-                        await File.WriteAllBytesAsync(Path.Combine(conf.WatchFolder!, Path.GetFileName(i.FileName!)), httpCli.GetByteArrayAsync(downloadUrl!.GetValue<string>()).Result);
-                        Thread.Sleep(1000);
+                        var policy = Policy.Handle<AggregateException>().Or<HttpRequestException>().Or<TimeoutException>().Or<IOException>().WaitAndRetry(3, _ => new TimeSpan(0, 0, 3), (e, s, t, c) => { Log.Logger.Error("Download error. Retry in {sleepDuration}. {retry}/{max}", s, t, 3); });
+                        await policy.Execute(async () =>
+                        {
+                            var downloadUrl = JsonNode.Parse(
+                                httpCli.GetStringAsync($"https://api.curseforge.com/v1/mods/{projectId}/files/{i.FileId}/download-url").Result)![
+                                "data"];
+                            Log.Logger.Information("Download {0}...", i.FileName!);
+                            await File.WriteAllBytesAsync(Path.Combine(conf.WatchFolder!, Path.GetFileName(i.FileName!)), await httpCli.GetByteArrayAsync(downloadUrl!.GetValue<string>()));
+                            Thread.Sleep(1000);
+                        });
                     }
                 }
             }
@@ -91,6 +106,8 @@ class Program
         watcher.Created += (s, e) => OnFileAct(s, e, UpdateInfos);
         watcher.Deleted += (s, e) => OnFileAct(s, e, UpdateInfos);
         watcher.Renamed += OnFileRename;
+
+        Log.Logger.Information("Watched folder.");
 
         void UpdateInfos(long p, Info input, bool del, byte[] bytes)
         {
@@ -249,6 +266,7 @@ class Program
 
     private static async Task<(long, long, bool)> GetFileInformationAsync(byte[] bytes, string name, string apiKey)
     {
+        var policy = Policy.Handle<Exception>().WaitAndRetry(5, _ => new TimeSpan(0, 0, 3), (e, s, t, c) => { Log.Logger.Error("Fetch error. Retry in {sleepDuration}. {retry}/{max}", s, t, 5); });
         const string reqUrl = "https://api.curseforge.com/v1/fingerprints";
         var fingerPrint = MurmurHash2.HashNormal(bytes);
         var req = new HttpRequestMessage
@@ -265,25 +283,30 @@ class Program
         };
         req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         req.Headers.Add("x-api-key", apiKey);
-        var resp = await new HttpClient().SendAsync(req);
-        try
+        var rtn = await policy.Execute(async () =>
         {
-            var json = await JsonSerializer.DeserializeAsync(await resp.Content.ReadAsStreamAsync(), ResponseContext.Default.Response);
-            if (json is null)
+            var resp = await new HttpClient().SendAsync(req);
+            try
             {
-                Log.Logger!.Information("Cannot match {0} on CurseForge.", name);
+                var json = await JsonSerializer.DeserializeAsync(await resp.Content.ReadAsStreamAsync(), ResponseContext.Default.Response);
+                if (json is null)
+                {
+                    Log.Logger!.Information("Cannot match {0} on CurseForge.", name);
+                    return (0, 0, true);
+                }
+
+                var match =
+                    json!.Data!.ExactMatches!.FirstOrDefault(match => match.File!.FileName == name) ?? json.Data!.ExactMatches![0];
+
+                return (match.Id, match.File!.Id, false);
+            }
+            catch
+            {
+                Log.Logger!.Information("{0} is not on CurseForge!", name);
                 return (0, 0, true);
             }
+        });
 
-            var match =
-                json!.Data!.ExactMatches!.FirstOrDefault(match => match.File!.FileName == name) ?? json.Data!.ExactMatches![0];
-
-            return (match.Id, match.File!.Id, false);
-        }
-        catch
-        {
-            Log.Logger!.Information("{0} is not on CurseForge!", name);
-            return (0, 0, true);
-        }
+        return rtn;
     }
 }
