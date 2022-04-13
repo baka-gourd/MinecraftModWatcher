@@ -206,7 +206,7 @@ class Program
             }
         }
 
-        while (args.Length > 0)
+        while (args.Length < 1)
         {
             Console.ReadLine();
         }
