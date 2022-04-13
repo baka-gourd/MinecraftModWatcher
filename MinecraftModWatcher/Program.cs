@@ -17,6 +17,9 @@ class Program
     {
         Log.Logger = new LoggerConfiguration().Enrich.FromLogContext().MinimumLevel.Information().WriteTo.Console()
             .CreateLogger();
+
+        Log.Logger.Information("Welcome to ModWatcher!");
+
         //load config.
         InitResource();
         var conf = new Conf();
