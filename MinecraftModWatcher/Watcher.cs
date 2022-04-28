@@ -176,11 +176,14 @@ public class Watcher
         var mods = new List<CFile>();
         foreach (var (id, info) in Infos)
         {
-            if (id == 0) continue;
             foreach (var i in info)
             {
                 if (i.Deleted) continue;
-                if (i.Staged) continue;
+                if (i.Staged)
+                {
+                    files.Add($"ModWatcher/stage/{i.FileName}");
+                    continue;
+                }
                 var cf = new CFile() { ProjectId = id, FileRequired = true, FileId = i.FileId };
                 mods.Add(cf);
             }
@@ -194,7 +197,7 @@ public class Watcher
         var prefix = Path.GetFullPath(Conf.MinecraftFolder);
         foreach (var file1 in files)
         {
-            var inFile = "overrides/" + file1.Replace(prefix!, "").Replace("\\", "/");
+            var inFile = "overrides/" + file1.Replace(prefix!, "").Replace("\\", "/").Replace("ModWatcher/stage", "mods");
             Log.Logger.Information("Add {0}", inFile);
             archive.CreateEntryFromFile(file1, inFile);
         }
