@@ -1,4 +1,5 @@
-﻿using CurseforgeManifestsGenerator;
+﻿using System.IO.Compression;
+using CurseforgeManifestsGenerator;
 using Polly;
 using Serilog;
 using System.Net.Http.Headers;
@@ -134,8 +135,44 @@ public class Watcher
         }
     }
 
-    public void Export()
+    /// <summary>
+    /// 
+    /// </summary>
+    public async Task Export()
     {
+        if (File.Exists("./ModWatcher/export.zip"))
+        {
+            File.Delete("./ModWatcher/export.zip");
+        }
+        await using var stream = File.Create("./ModWatcher/export.zip");
+        var archive = new ZipArchive(stream, ZipArchiveMode.Update);
+        var files = new List<string>();
+        archive.Comment = "Auto generated zip.";
+
+        var root = new DirectoryInfo(Conf!.MinecraftFolder);
+        foreach (var directory in root.EnumerateDirectories())
+        {
+            if (Conf.IgnoreDirectories.Contains(directory.Name))
+            {
+                continue;
+            }
+
+            files.AddRange(Directory.GetFiles(directory.FullName, "*.*", SearchOption.AllDirectories).Where(s =>
+            {
+                foreach (var ignoreFile in Conf.IgnoreFiles)
+                {
+                    if (!s.Contains(ignoreFile))
+                    {
+                        return true;
+                    }
+
+                    return false;
+                }
+
+                return false;
+            }));
+        }
+
         var mods = new List<CFile>();
         foreach (var (id, info) in Infos)
         {
@@ -151,7 +188,18 @@ public class Watcher
 
         var outM = Conf!.Manifest;
         outM!.Files = mods.ToArray();
-        File.WriteAllTextAsync("./ModWatcher/manifest.json", JsonSerializer.Serialize(outM, new ManifestContext(new JsonSerializerOptions() { WriteIndented = true }).Manifest));
+        await File.WriteAllTextAsync("./ModWatcher/manifest.json", JsonSerializer.Serialize(outM, new ManifestContext(new JsonSerializerOptions() { WriteIndented = true }).Manifest));
+
+        archive.CreateEntryFromFile("./ModWatcher/manifest.json", "manifest.json");
+        var prefix = Path.GetFullPath(Conf.MinecraftFolder);
+        foreach (var file1 in files)
+        {
+            var inFile = "overrides/" + file1.Replace(prefix!, "").Replace("\\", "/");
+            Log.Logger.Information("Add {0}", inFile);
+            archive.CreateEntryFromFile(file1, inFile);
+        }
+
+        archive.Dispose();
     }
     /// <summary>
     /// 
@@ -210,7 +258,10 @@ public class Watcher
                     Name = "G",
                     Overrides = "overrides",
                     Version = "1.0"
-                }
+                },
+                IgnoreDirectories = new[] { "screenshots", "saves", "local", "logs", "fonts", "crash-reports", "caches", "cache", ".mixin.out", "mods", "ModWatcher" },
+                IgnoreFiles = new[] { "usercache.json", "usernamecache.json" },
+                MinecraftFolder = "./"
             }, ConfContext.Default.Conf));
         }
     }
