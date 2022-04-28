@@ -31,20 +31,20 @@ class Program
         var w = new Watcher(downloadOnly, forceRegenerate);
 
         await w.Start();
-        if (true)
+        if (export)
         {
             await w.Export();
             return;
         }
 
-        //if (!downloadOnly)
-        //{
-        //    w.StartWatch();
-        //}
+        if (!downloadOnly)
+        {
+            w.StartWatch();
+        }
 
-        //if (!downloadOnly)
-        //{
-        //    while (true) Console.ReadLine();
-        //}
+        if (!downloadOnly)
+        {
+            while (true) Console.ReadLine();
+        }
     }
 }
