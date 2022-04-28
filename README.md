@@ -13,4 +13,4 @@ Make your makepack in github easily.
 ## How to build
 
 1. set up dotnet7
-2. just build like another dotnet application.
+2. `dotnet publish .\MinecraftModWatcher\MinecraftModWatcher.csproj -c Release -o ./ -r win-x64`
