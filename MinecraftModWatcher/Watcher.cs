@@ -7,6 +7,7 @@ using System.Text.Json;
 using System.Text;
 using System.Security.Cryptography;
 using System.Text.Json.Nodes;
+using System.IO;
 
 namespace MinecraftModWatcher;
 
@@ -172,6 +173,21 @@ public class Watcher
                 return false;
             }));
         }
+
+        files.AddRange(Directory.GetFiles(root.FullName, "*.*", SearchOption.AllDirectories).Where(s =>
+        {
+            foreach (var ignoreFile in Conf.IgnoreFiles)
+            {
+                if (!s.Contains(ignoreFile))
+                {
+                    return true;
+                }
+
+                return false;
+            }
+
+            return false;
+        }));
 
         var mods = new List<CFile>();
         foreach (var (id, info) in Infos)
