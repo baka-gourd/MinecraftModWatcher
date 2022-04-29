@@ -174,7 +174,7 @@ public class Watcher
             }));
         }
 
-        files.AddRange(Directory.GetFiles(root.FullName, "*.*", SearchOption.AllDirectories).Where(s =>
+        files.AddRange(Directory.GetFiles(root.FullName, "*.*", SearchOption.TopDirectoryOnly).Where(s =>
         {
             foreach (var ignoreFile in Conf.IgnoreFiles)
             {
