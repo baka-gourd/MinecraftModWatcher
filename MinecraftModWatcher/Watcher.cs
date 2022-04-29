@@ -162,15 +162,13 @@ public class Watcher
             {
                 foreach (var ignoreFile in Conf.IgnoreFiles)
                 {
-                    if (!s.Contains(ignoreFile))
+                    if (s.Contains(ignoreFile))
                     {
-                        return true;
+                        return false;
                     }
-
-                    return false;
                 }
 
-                return false;
+                return true;
             }));
         }
 
@@ -178,15 +176,13 @@ public class Watcher
         {
             foreach (var ignoreFile in Conf.IgnoreFiles)
             {
-                if (!s.Contains(ignoreFile))
+                if (s.Contains(ignoreFile))
                 {
-                    return true;
+                    return false;
                 }
-
-                return false;
             }
 
-            return false;
+            return true;
         }));
 
         var mods = new List<CFile>();
